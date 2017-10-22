@@ -39,13 +39,13 @@ def group_by_week(weekday, datetimes):
 			week_cutoff = new_cutoff
 			buckets.append([])
 		buckets[-1].append(datetime)
-	return [len(b) for b in buckets]
+	return buckets
 
 def group_by_weekday(datetimes):
 	buckets = [[], [], [], [], [], [], []]
 	for datetime in datetimes:
 		buckets[datetime.weekday()].append(datetime)
-	return [len(b) for b in buckets]
+	return buckets
 
 def group_by_day(datetimes, include_days=range(7)):
 	datetimes = sorted(datetimes)
@@ -59,4 +59,4 @@ def group_by_day(datetimes, include_days=range(7)):
 			if current_date.weekday() in include_days:
 				buckets.append([])
 		buckets[-1].append(datetime)
-	return [len(b) for b in buckets]
+	return buckets

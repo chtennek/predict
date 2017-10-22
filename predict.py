@@ -1,11 +1,13 @@
 """PredictIt analysis.
 
 Usage:
-  predict [--vp1 --vp2 --rdt --potus] [--all --week --day --weekday] [(-w <weekday>)] [(-t <from> <to>)] [(-f <filters>)...] [-c | --cached]
+  predict [--vp1 --vp2 --rdt --potus] [--all --calendar --week --day --weekday] [(-w WEEKDAY)] [(-t FROM TO)] [(-f <filters>)...] [-c | --cached] [-v]
   predict ship <name> move <x> <y> [--speed=<kn>]
+  predict -h
 
 Options:
   -h --help     Show this screen.
+  --verbose     Show debugging output.
   --version     Show version.
   --speed=<kn>  Speed in knots [default: 10].
   --moored      Moored (anchored) mine.
@@ -43,11 +45,27 @@ def fetch_all_timestamps(screen_name='vp', max_id=None, count=3000):
 	timestamps = [s['created_at'] for s in statuses]
 	return timestamps
 
+def calendar_format(latest_dt, data):
+	# data = [ (datetime, output) ]
+	weeks = [[]] # [ week = [outputs] ]
+	weekday = latest_dt.weekday()
+	for value in data:
+		weeks[-1].insert(0, str(value)) # str() for outputting
+		if weekday == 0:
+			weeks.append([])
+		weekday = (weekday - 1) % 7
+	return '\n'.join(['\t'.join(week) for week in reversed(weeks)])
+
+def counts(buckets):
+	return [len(b) for b in buckets]
+
 if __name__ == '__main__':
 	args = docopt(__doc__)
-	print(args)
+	if args['-v']:
+		print(args)
 
 	if args['--all']:
+		args['--recent'] = True
 		args['--week'] = True
 		args['--day'] = True
 		args['--weekday'] = True
@@ -85,16 +103,21 @@ if __name__ == '__main__':
 			dts[username] = analysis.f_weekdays(dts[username])
 		if 'mornings' in args['<filters>']:
 			dts[username] = analysis.f_mornings(dts[username])
-		if str(args['<weekday>']).isdigit():
-			args['<weekday>'] = int(args['<weekday>'])
-			dts[username] = analysis.f_weekday(args['<weekday>'], dts[username])
-		if str(args['<from>']).isdigit() and str(args['<to>']).isdigit():
-			args['<from>'] = int(args['<from>'])
-			args['<to>'] = int(args['<to>'])
-			dts[username] = analysis.f_time(args['<from>'], args['<to>'], dts[username])
+		if str(args['WEEKDAY']).isdigit():
+			args['WEEKDAY'] = int(args['WEEKDAY'])
+			dts[username] = analysis.f_weekday(args['WEEKDAY'], dts[username])
+		if str(args['FROM']).isdigit() and str(args['TO']).isdigit():
+			args['FROM'] = int(args['FROM'])
+			args['TO'] = int(args['TO'])
+			dts[username] = analysis.f_time(args['FROM'], args['TO'], dts[username])
 		print('to {}!'.format(len(dts[username])))
 
 	# Analyses [TODO] merge these with dispatch
+	if args['--recent']:
+		if args['--vp1'] or args['--vp2']: pp(dts['vp'][:15])
+		if args['--rdt']: pp(dts['rdt'][:15])
+		if args['--potus']: pp(dts['potus'][:15])
+
 	by_week = {}
 	if args['--week']:
 		if args['--vp1']: by_week['vp T'] = analysis.group_by_week(1, dts['vp'])
@@ -111,7 +134,7 @@ if __name__ == '__main__':
 	by_day = {}
 	if args['--day']:
 		if args['--vp1'] or args['--vp2']: by_day['vp'] = analysis.group_by_day(dts['vp'])
-		if args['--rdt']: by_day['rdt'] = analysis.group_by_day(dts['realdDonaldTrump'])
+		if args['--rdt']: by_day['rdt'] = analysis.group_by_day(dts['realDonaldTrump'])
 		if args['--potus']: by_day['potus'] = analysis.group_by_day(dts['potus'])
 
 	for label, datetimes in dts.items():
@@ -120,12 +143,14 @@ if __name__ == '__main__':
 
 	for label, data in by_week.items():
 		print(label)
-		print(data)
+		print(counts(data))
 
 	for label, data in by_weekday.items():
 		print(label)
-		print(data)
+		print(counts(data))
 
 	for label, data in by_day.items():
 		print(label)
-		print(data)
+		print(counts(data))
+		if args['--calendar']:
+			print(calendar_format(data[0][0], counts(data)))
