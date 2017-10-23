@@ -51,7 +51,7 @@ def calendar_format(latest_dt, data):
 	weekday = latest_dt.weekday()
 	for value in data:
 		weeks[-1].insert(0, str(value)) # str() for outputting
-		if weekday == 0:
+		if weekday == 6:
 			weeks.append([])
 		weekday = (weekday - 1) % 7
 	return '\n'.join(['\t'.join(week) for week in reversed(weeks)])
@@ -82,6 +82,7 @@ if __name__ == '__main__':
 		usernames = ['vp', 'realDonaldTrump', 'potus']
 
 	# Load/fetch tweet data
+	timestamps = {}
 	dts = {}
 	if args['-c']:
 		for username in usernames:
@@ -89,7 +90,10 @@ if __name__ == '__main__':
 				dts[username] = pickle.load(f)
 	else:
 		for username in usernames:
-			dts[username] = [dt.strptime(t, DT_FMT) for t in fetch_all_timestamps(username)]
+			timestamps[username] = fetch_all_timestamps(username)
+			dts[username] = [dt.strptime(t, DT_FMT) for t in timestamps[username]]
+			with open(username + '.json', 'w') as f:
+				json.dump(timestamps[username], f)
 			with open(username + '.pkl', 'wb') as f:
 				pickle.dump(dts[username], f)
 	# [TODO] handle EST conversion better
@@ -115,7 +119,7 @@ if __name__ == '__main__':
 	# Analyses [TODO] merge these with dispatch
 	if args['--recent']:
 		if args['--vp1'] or args['--vp2']: pp(dts['vp'][:15])
-		if args['--rdt']: pp(dts['rdt'][:15])
+		if args['--rdt']: pp(dts['realDonaldTrump'][:15])
 		if args['--potus']: pp(dts['potus'][:15])
 
 	by_week = {}
